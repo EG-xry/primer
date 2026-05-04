@@ -1,160 +1,160 @@
-# PyTorch MPS GPU 优化说明
+# PyTorch MPS GPU Optimization Notes
 
-## 概述
+## Overview
 
-本文档说明 `python/run_retina_analysis.py` 中各阶段算法的 PyTorch MPS (Apple Silicon GPU) 优化情况。
-
----
-
-## 优化总览
-
-| 阶段 | 算法 | MPS 优化 | 状态 | 说明 |
-|------|------|---------|------|------|
-| 阶段一 | 数据预处理 | ❌ 不需要 | — | I/O 密集型，GPU 无法加速 |
-| 阶段二 | STA | ❌ 不需要 | — | 单次矩阵乘法，NumPy 已足够快 |
-| 阶段三 | STC 置换检验 | ✅ 已优化 | 已实现 | **1000x 加速**（69s→0.07s/次） |
-| 阶段四 | MNE 共轭梯度 | ✅ 已优化 | 已实现 | logloss/gradient/fit 全部 MPS GPU 加速 |
-| 阶段五 | GLM | ⏭️ 跳过 | — | 需要 Pillow 工具包 |
-| 阶段六 | 预测验证 | ❌ 不需要 | — | 简单矩阵乘法，已足够快 |
-| 阶段七 | 图表生成 | ❌ 不需要 | — | matplotlib 绑图，无计算瓶颈 |
+This document describes the PyTorch MPS (Apple Silicon GPU) optimization status for each stage of the algorithm in `python/run_retina_analysis.py`.
 
 ---
 
-## 阶段三：STC 置换检验 — ✅ 已优化
+## Optimization Summary
 
-### 瓶颈分析
+| Stage | Algorithm | MPS Optimization | Status | Notes |
+|-------|-----------|-----------------|--------|-------|
+| Stage 1 | Data Preprocessing | ❌ Not needed | — | I/O intensive, GPU cannot accelerate |
+| Stage 2 | STA | ❌ Not needed | — | Single matrix multiplication, NumPy is fast enough |
+| Stage 3 | STC Permutation Test | ✅ Optimized | Implemented | **1000x speedup** (69s→0.07s/iteration) |
+| Stage 4 | MNE Conjugate Gradient | ✅ Optimized | Implemented | logloss/gradient/fit all MPS GPU accelerated |
+| Stage 5 | GLM | ⏭️ Skipped | — | Requires Pillow toolkit |
+| Stage 6 | Prediction Validation | ❌ Not needed | — | Simple matrix multiplication, already fast enough |
+| Stage 7 | Figure Generation | ❌ Not needed | — | matplotlib plotting, no computational bottleneck |
 
-STC 零分布需要执行 200 次置换检验，每次包含：
-1. 循环移位脉冲序列 `R_rnd = roll(R, shift)` 
-2. 计算加权协方差 `Cs_rnd = cov(S * sqrt(R_rnd))` — 110K×588 矩阵
-3. 特征值分解 `eigvalsh(Cs_rnd - Cp)` — 588×588 矩阵
+---
 
-**原始实现（np.cov）：** ~69 秒/次 → 200 次 = **~3.8 小时**
+## Stage 3: STC Permutation Test — ✅ Optimized
 
-### 优化方案
+### Bottleneck Analysis
 
-#### 优化 1：算法优化（替代 np.cov）
+The STC null distribution requires 200 permutation tests, each involving:
+1. Circular shift of spike train `R_rnd = roll(R, shift)`
+2. Weighted covariance computation `Cs_rnd = cov(S * sqrt(R_rnd))` — 110K×588 matrix
+3. Eigenvalue decomposition `eigvalsh(Cs_rnd - Cp)` — 588×588 matrix
+
+**Original implementation (np.cov):** ~69 seconds/iteration → 200 iterations = **~3.8 hours**
+
+### Optimization Approach
+
+#### Optimization 1: Algorithmic Optimization (replacing np.cov)
 ```python
-# 原始：np.cov 内部重复计算均值、创建临时数组
+# Original: np.cov internally recomputes mean, creates temporary arrays
 C = np.cov(S_weighted_centered, rowvar=False) / R_mean
 
-# 优化：直接矩阵乘法，跳过冗余计算
+# Optimized: Direct matrix multiplication, skipping redundant computation
 w2 = R_rnd  # sqrt(R)^2 = R
 StW2S = (S * w2[:, None]).T @ S
 C = (StW2S / (T-1) - T/(T-1) * outer(Sw_mean, Sw_mean)) / R_mean
 ```
-**效果：** ~69s → ~0.4s/次（**170x 加速**）
+**Result:** ~69s → ~0.4s/iteration (**170x speedup**)
 
-#### 优化 2：PyTorch MPS GPU 加速
+#### Optimization 2: PyTorch MPS GPU Acceleration
 ```python
-# 将矩阵运算卸载到 Apple Silicon GPU
+# Offload matrix operations to Apple Silicon GPU
 S_t = torch.tensor(S, dtype=torch.float32, device="mps")
-S_w = S_t * sqrt_R_rnd.unsqueeze(1)  # GPU 加权
-C_rnd = (S_w_c.T @ S_w_c) / (T-1) / R_mean  # GPU 矩阵乘法
-evals = torch.linalg.eigvalsh(dC_rnd.cpu())  # CPU 特征值（MPS 不支持 eigh）
+S_w = S_t * sqrt_R_rnd.unsqueeze(1)  # GPU weighting
+C_rnd = (S_w_c.T @ S_w_c) / (T-1) / R_mean  # GPU matrix multiplication
+evals = torch.linalg.eigvalsh(dC_rnd.cpu())  # CPU eigenvalues (MPS doesn't support eigh)
 ```
-**效果：** ~0.4s → ~0.07s/次（**额外 6x 加速**）
+**Result:** ~0.4s → ~0.07s/iteration (**additional 6x speedup**)
 
-### 最终性能
-| 方案 | 单次耗时 | 200次总耗时 | 加速比 |
-|------|---------|------------|-------|
-| 原始 np.cov | 69s | ~3.8h | 1x |
-| 优化 NumPy | 0.4s | ~83s | **170x** |
+### Final Performance
+| Approach | Per-iteration Time | Total for 200 iterations | Speedup |
+|----------|-------------------|--------------------------|---------|
+| Original np.cov | 69s | ~3.8h | 1x |
+| Optimized NumPy | 0.4s | ~83s | **170x** |
 | **MPS GPU** | **0.07s** | **~13s** | **~1000x** |
 
-### 代码位置
-- `_stc_null_distribution_fast()` — 自动检测 MPS，选择最佳路径
-- `_stc_null_torch_mps()` — PyTorch MPS 版本
-- `_stc_null_numpy_fast()` — 优化 NumPy 回退版本
+### Code Location
+- `_stc_null_distribution_fast()` — Automatically detects MPS, selects best path
+- `_stc_null_torch_mps()` — PyTorch MPS version
+- `_stc_null_numpy_fast()` — Optimized NumPy fallback version
 
 ---
 
-## 阶段四：MNE 共轭梯度 — ✅ 已优化
+## Stage 4: MNE Conjugate Gradient — ✅ Optimized
 
-### 瓶颈分析
+### Bottleneck Analysis
 
-MNE 拟合使用 Polak-Ribière 共轭梯度法，每次迭代需要计算：
-1. **logloss** — `stim @ ptemp + sum(stim * (stim @ J))` — (T×N)@(N,) + (T×N)@(N×N) 矩阵运算
-2. **gradient** — `stim.T @ (pSpike * stim)` — (N×T)@(T×N) = N×N 外积
-3. **线搜索** — 多次 logloss 评估
+MNE fitting uses the Polak-Ribière conjugate gradient method, each iteration requires computing:
+1. **logloss** — `stim @ ptemp + sum(stim * (stim @ J))` — (T×N)@(N,) + (T×N)@(N×N) matrix operations
+2. **gradient** — `stim.T @ (pSpike * stim)` — (N×T)@(T×N) = N×N outer product
+3. **line search** — Multiple logloss evaluations
 
-对于 short3 配置：T≈82K, N=588, 参数量=1+588+588²=346,345
+For short3 configuration: T≈82K, N=588, number of parameters=1+588+588²=346,345
 
-### 优化方案
+### Optimization Approach
 
-#### 完全 MPS GPU 化
-所有计算（数据、参数、梯度、线搜索）全部在 GPU 上执行，避免 CPU-GPU 数据传输：
+#### Full MPS GPU Implementation
+All computations (data, parameters, gradients, line search) are executed entirely on the GPU, avoiding CPU-GPU data transfers:
 
 ```python
-# 数据预加载到 GPU（仅一次）
+# Preload data to GPU (once only)
 stim_t = torch.tensor(stim, dtype=torch.float32, device="mps")
 resp_t = torch.tensor(resp, dtype=torch.float32, device="mps")
 
-# logloss: 使用 torch.nn.functional.softplus 替代 np.log(1+np.exp(x))
+# logloss: Use torch.nn.functional.softplus instead of np.log(1+np.exp(x))
 linear = p_t[0] + stim_t @ ptemp + (stim_t * (stim_t @ J)).sum(1)
-f1 = torch.nn.functional.softplus(linear)  # 数值稳定 + GPU 加速
+f1 = torch.nn.functional.softplus(linear)  # Numerically stable + GPU accelerated
 loss = (resp_t * f1 + (1 - resp_t) * torch.nn.functional.softplus(-linear)).mean()
 
-# gradient: 使用 torch.sigmoid 替代手动 sigmoid
+# gradient: Use torch.sigmoid instead of manual sigmoid
 pSpike = torch.sigmoid(-linear)  # GPU sigmoid
-temp = (stim_t.T @ (pSpike.unsqueeze(1) * stim_t)) / Nsamples  # GPU 外积
+temp = (stim_t.T @ (pSpike.unsqueeze(1) * stim_t)) / Nsamples  # GPU outer product
 ```
 
-#### 关键优化细节
-1. **约束平均** `avgsqrd = stim.T @ (resp * stim)` 预计算在 GPU 上（一次性）
-2. **softplus** 替代 `log(1+exp(x))` — 数值更稳定且 GPU 原生支持
-3. **torch.sigmoid** 替代手动 sigmoid — GPU 原生操作
-4. **参数全程在 GPU** — 共轭方向 g/h/xi 均为 GPU tensor，无 CPU-GPU 拷贝
-5. **仅在返回时 `.cpu().numpy()`** — 最后一次拷贝回 CPU
+#### Key Optimization Details
+1. **Constraint average** `avgsqrd = stim.T @ (resp * stim)` precomputed on GPU (one-time)
+2. **softplus** replaces `log(1+exp(x))` — More numerically stable and natively supported on GPU
+3. **torch.sigmoid** replaces manual sigmoid — Native GPU operation
+4. **Parameters stay on GPU throughout** — Conjugate directions g/h/xi are all GPU tensors, no CPU-GPU copies
+5. **Only `.cpu().numpy()` on return** — Single final copy back to CPU
 
-### 代码位置
-- `_mne_fit_mps()` — MPS GPU 版本的完整共轭梯度拟合
-- `_mne_logloss_mps()` — GPU logloss（使用 softplus）
-- `_mne_gradient_mps()` — GPU gradient（使用 torch.sigmoid）
-- `_mne_fit_numpy()` — NumPy 回退版本
-- `mne_fit()` — 自动检测 MPS 并选择路径
+### Code Location
+- `_mne_fit_mps()` — MPS GPU version of the complete conjugate gradient fitting
+- `_mne_logloss_mps()` — GPU logloss (using softplus)
+- `_mne_gradient_mps()` — GPU gradient (using torch.sigmoid)
+- `_mne_fit_numpy()` — NumPy fallback version
+- `mne_fit()` — Automatically detects MPS and selects path
 
-### 预计加速
-| 操作 | NumPy CPU | MPS GPU | 加速比 |
-|------|----------|---------|-------|
+### Expected Speedup
+| Operation | NumPy CPU | MPS GPU | Speedup |
+|-----------|----------|---------|---------|
 | logloss (82K×588) | ~0.5s | ~0.05s | ~10x |
-| gradient (外积 588×82K×588) | ~0.8s | ~0.08s | ~10x |
-| 单次迭代 (2×loss + 1×grad) | ~1.8s | ~0.18s | ~10x |
-| 完整拟合 (~50 迭代) | ~90s | ~9s | ~10x |
-| 20 次拟合 (5 JK × 4 内部JK) | ~30min | ~3min | ~10x |
+| gradient (outer product 588×82K×588) | ~0.8s | ~0.08s | ~10x |
+| Single iteration (2×loss + 1×grad) | ~1.8s | ~0.18s | ~10x |
+| Full fit (~50 iterations) | ~90s | ~9s | ~10x |
+| 20 fits (5 JK × 4 inner JK) | ~30min | ~3min | ~10x |
 
 ---
 
-## 其他阶段分析
+## Other Stage Analysis
 
-### 阶段一：数据预处理 — 无需优化
-- **瓶颈：** `read_frame_v2` 逐帧读取二进制文件（I/O 密集）
-- **说明：** GPU 无法加速磁盘 I/O，可考虑 `np.fromfile` 一次性读取整个文件来优化
+### Stage 1: Data Preprocessing — No Optimization Needed
+- **Bottleneck:** `read_frame_v2` reads binary file frame by frame (I/O intensive)
+- **Notes:** GPU cannot accelerate disk I/O; consider using `np.fromfile` to read the entire file at once for optimization
 
-### 阶段二：STA — 无需优化  
-- **计算：** `S.T @ R / sum(R)` — 单次矩阵-向量乘法
-- **说明：** 已在 ~1 秒内完成，GPU 加速收益小于数据传输开销
+### Stage 2: STA — No Optimization Needed
+- **Computation:** `S.T @ R / sum(R)` — Single matrix-vector multiplication
+- **Notes:** Already completes in ~1 second; GPU acceleration benefit is less than data transfer overhead
 
-### 阶段六：预测验证 — 无需优化
-- **计算：** 矩阵-向量乘法 + 插值 + 统计量计算
-- **说明：** 每个模型预测仅需毫秒级，无瓶颈
+### Stage 6: Prediction Validation — No Optimization Needed
+- **Computation:** Matrix-vector multiplication + interpolation + statistics computation
+- **Notes:** Each model prediction takes only milliseconds, no bottleneck
 
 ---
 
-## 环境要求
+## Environment Requirements
 
-| 依赖 | 版本 | 用途 |
-|------|------|------|
-| PyTorch | ≥ 2.0 | MPS GPU 后端 |
-| macOS | ≥ 12.3 | Metal/MPS 支持 |
-| Apple Silicon | M1/M2/M3 | GPU 硬件 |
+| Dependency | Version | Purpose |
+|-----------|---------|---------|
+| PyTorch | ≥ 2.0 | MPS GPU backend |
+| macOS | ≥ 12.3 | Metal/MPS support |
+| Apple Silicon | M1/M2/M3 | GPU hardware |
 
-安装：
+Installation:
 ```bash
 pip install torch
 ```
 
-验证：
+Verification:
 ```python
 import torch
 print(torch.backends.mps.is_available())  # True
@@ -162,14 +162,14 @@ print(torch.backends.mps.is_available())  # True
 
 ---
 
-## 自动回退机制
+## Automatic Fallback Mechanism
 
-所有 MPS 优化都有 NumPy 回退路径：
+All MPS optimizations have NumPy fallback paths:
 ```python
 if torch.backends.mps.is_available():
-    return _stc_null_torch_mps(...)  # GPU 路径
+    return _stc_null_torch_mps(...)  # GPU path
 else:
-    return _stc_null_numpy_fast(...)  # CPU 优化路径
+    return _stc_null_numpy_fast(...)  # CPU optimized path
 ```
 
-即使没有 PyTorch 或 MPS，脚本仍然可以正常运行（使用优化 NumPy 算法，比原始版本快 170x）。
+Even without PyTorch or MPS, the script can still run normally (using the optimized NumPy algorithm, which is 170x faster than the original version).
