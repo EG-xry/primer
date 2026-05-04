@@ -80,3 +80,14 @@ pip install -e ".[gpu]"
 ```
 
 Installs PyTorch and JAX for large-scale model fitting acceleration.
+
+
+![alt text](output/fig_101_stimulus_pca.png)
+![alt text](output/fig_102_sta.png)
+![alt text](output/fig_103_stc.png)
+![alt text](output/fig_104_mne.png)
+![alt text](output/fig_105_glm.png)
+![alt text](output/fig_106_prediction_validation.png)   
+
+
+
