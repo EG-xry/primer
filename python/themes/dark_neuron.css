@@ -1,0 +1,19 @@
+/* Dark Neuron — 深色神经科学主题 */
+body { font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace; margin: 0; background: #0d1117; color: #c9d1d9; }
+.header { background: linear-gradient(135deg, #161b22 0%, #0d1117 50%, #1a1e2e 100%); color: #58a6ff; padding: 30px 40px; border-bottom: 2px solid #30363d; }
+.header h1 { margin: 0; font-size: 28px; color: #58a6ff; }
+.header p { margin: 5px 0 0; opacity: 0.7; color: #8b949e; }
+.container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+.section { background: #161b22; border-radius: 8px; padding: 24px; margin-bottom: 20px; border: 1px solid #30363d; }
+.section h2 { margin-top: 0; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 8px; }
+pre { background: #0d1117; color: #79c0ff; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto; border: 1px solid #30363d; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; }
+.card { background: #161b22; border-radius: 8px; padding: 16px; border: 1px solid #30363d; transition: border-color 0.2s; }
+.card:hover { border-color: #58a6ff; }
+.card h3 { margin: 0 0 12px; color: #8b949e; font-size: 14px; }
+.card img { width: 100%; border-radius: 6px; }
+.badge { display: inline-block; background: #1f6feb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px; margin-right: 6px; }
+.meta { display: flex; gap: 20px; flex-wrap: wrap; margin: 12px 0; }
+.meta-item { background: #0d1117; padding: 12px 16px; border-radius: 8px; flex: 1; min-width: 200px; border: 1px solid #30363d; }
+.meta-item .label { font-size: 12px; color: #8b949e; }
+.meta-item .value { font-size: 18px; font-weight: 600; color: #58a6ff; }

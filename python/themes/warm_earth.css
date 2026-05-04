@@ -1,0 +1,18 @@
+/* Warm Earth — 温暖大地色调主题 */
+body { font-family: 'Georgia', 'Times New Roman', serif; margin: 0; background: #fdf6ec; color: #3d2c1e; }
+.header { background: linear-gradient(135deg, #8b5e3c 0%, #c08552 50%, #d4a574 100%); color: #fff8f0; padding: 30px 40px; }
+.header h1 { margin: 0; font-size: 28px; }
+.header p { margin: 5px 0 0; opacity: 0.85; }
+.container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+.section { background: #fffcf5; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(139,94,60,0.1); border: 1px solid #e8dcc8; }
+.section h2 { margin-top: 0; color: #8b5e3c; border-bottom: 2px solid #d4a574; padding-bottom: 8px; font-style: italic; }
+pre { background: #2c1e12; color: #e8c9a0; padding: 16px; border-radius: 6px; overflow-x: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; max-height: 400px; overflow-y: auto; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; }
+.card { background: #fffcf5; border-radius: 8px; padding: 16px; box-shadow: 0 2px 12px rgba(139,94,60,0.1); border: 1px solid #e8dcc8; }
+.card h3 { margin: 0 0 12px; color: #8b5e3c; font-size: 14px; }
+.card img { width: 100%; border-radius: 6px; }
+.badge { display: inline-block; background: #c08552; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px; margin-right: 6px; }
+.meta { display: flex; gap: 20px; flex-wrap: wrap; margin: 12px 0; }
+.meta-item { background: #f5ebe0; padding: 12px 16px; border-radius: 8px; flex: 1; min-width: 200px; }
+.meta-item .label { font-size: 12px; color: #a0785a; }
+.meta-item .value { font-size: 18px; font-weight: 600; color: #3d2c1e; }

@@ -1,0 +1,19 @@
+/* Minimal Light — 极简白色主题 */
+body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; margin: 0; background: #ffffff; color: #111; }
+.header { background: #ffffff; color: #111; padding: 30px 40px; border-bottom: 1px solid #e5e5e5; }
+.header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+.header p { margin: 5px 0 0; color: #666; }
+.container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+.section { background: #ffffff; border-radius: 4px; padding: 24px; margin-bottom: 20px; border: 1px solid #e5e5e5; }
+.section h2 { margin-top: 0; color: #111; border-bottom: 1px solid #e5e5e5; padding-bottom: 8px; font-weight: 600; }
+pre { background: #fafafa; color: #333; padding: 16px; border-radius: 4px; overflow-x: auto; font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto; border: 1px solid #e5e5e5; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; }
+.card { background: #ffffff; border-radius: 4px; padding: 16px; border: 1px solid #e5e5e5; transition: box-shadow 0.2s; }
+.card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.card h3 { margin: 0 0 12px; color: #666; font-size: 14px; font-weight: 500; }
+.card img { width: 100%; border-radius: 4px; }
+.badge { display: inline-block; background: #111; color: white; padding: 2px 10px; border-radius: 3px; font-size: 12px; margin-right: 6px; }
+.meta { display: flex; gap: 20px; flex-wrap: wrap; margin: 12px 0; }
+.meta-item { background: #fafafa; padding: 12px 16px; border-radius: 4px; flex: 1; min-width: 200px; border: 1px solid #e5e5e5; }
+.meta-item .label { font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
+.meta-item .value { font-size: 18px; font-weight: 600; color: #111; }
