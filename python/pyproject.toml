@@ -1,0 +1,69 @@
+[project]
+name = "spike-train-primer"
+version = "0.1.0"
+description = "Python复现：神经元脉冲序列分析入门教程 (Analysis of Neuronal Spike Trains, Deconstructed)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+
+dependencies = [
+    # === 科学计算核心 ===
+    "numpy>=1.24",                  # 矩阵运算、线性代数
+    "scipy>=1.10",                  # 信号处理、优化、统计、稀疏矩阵、.mat文件读取
+    
+    # === 数据处理 ===
+    "pandas>=2.0",                  # 数据整理与分析
+    "h5py>=3.8",                    # 读取 MATLAB v7.3+ .mat 文件 (HDF5格式)
+    
+    # === 可视化 ===
+    "matplotlib>=3.7",              # 绑图、复现论文图表
+    "seaborn>=0.12",                # 统计可视化增强
+    
+    # === 机器学习与统计建模 ===
+    "scikit-learn>=1.2",            # 交叉验证、PCA、模型评估指标
+    "statsmodels>=0.14",            # GLM 拟合、统计检验
+    
+    # === 神经科学专用工具 ===
+    "pyglmnet>=1.1",               # 正则化 GLM (L1/L2/ElasticNet)，适用于神经数据
+    "neo>=0.12",                    # 神经电生理数据 I/O 标准接口
+    "elephant>=0.14",               # 脉冲序列分析 (STA、相关性、信息论指标)
+    "quantities>=0.15",             # 物理量单位支持 (neo/elephant 依赖)
+    
+    # === 信号处理 ===
+    "spectrum>=0.8",                # 频谱分析、相干性计算 (替代 MATLAB Chronux)
+    
+    # === 优化 ===
+    "cvxpy>=1.4",                   # 凸优化 (L1 正则化等)
+    
+    # === Jupyter 交互环境 ===
+    "jupyterlab>=4.0",              # 交互式开发环境
+    "ipywidgets>=8.0",              # Jupyter 交互组件
+    
+    # === 开发辅助 ===
+    "tqdm>=4.65",                   # 进度条
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.1",
+    "black>=23.0",
+    "ipdb>=0.13",
+]
+
+gpu = [
+    "torch>=2.0",                   # GPU 加速 (可选，用于大规模 GLM 拟合)
+    "jax[cpu]>=0.4",                # 自动微分 + JIT 编译 (可选)
+]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
